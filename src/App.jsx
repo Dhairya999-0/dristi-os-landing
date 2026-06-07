@@ -19,7 +19,6 @@ import {
 } from "lucide-react";
 import ThemeToggle from "./components/ThemeToggle";
 import FeatureCard from "./components/FeatureCard";
-import LaptopSimulator from "./components/LaptopSimulator";
 
 export default function App() {
   const shouldReduceMotion = useReducedMotion();
@@ -40,6 +39,44 @@ export default function App() {
   const [onboardingState, setOnboardingState] = useState("completed");
 
   const simulatorTriggerRef = useRef(null);
+  const videoRef = useRef(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const playVideo = () => {
+      if (video.paused) {
+        video.play().catch((err) => {
+          console.warn("Video playback was prevented or interrupted: ", err);
+        });
+      }
+    };
+
+    // Try starting playback
+    playVideo();
+
+    // Event listeners to force continuous playing/looping
+    const handlePause = () => {
+      playVideo();
+    };
+
+    video.addEventListener("pause", handlePause);
+    video.addEventListener("ended", playVideo);
+
+    // Failsafe polling to ensure it keeps playing
+    const interval = setInterval(() => {
+      if (video.paused) {
+        playVideo();
+      }
+    }, 1000);
+
+    return () => {
+      video.removeEventListener("pause", handlePause);
+      video.removeEventListener("ended", playVideo);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Helper to play Google Translate TTS
   const playGoogleTTS = (text, langCode = "ne") => {
@@ -624,18 +661,41 @@ export default function App() {
             </div>
           </div>
 
-          {/* Laptop Simulator */}
-          <div className="lg:col-span-6 flex justify-center z-10">
-            <LaptopSimulator
-              theme={theme}
-              lang={lang}
-              setLang={setLang}
-              onboardingState={onboardingState}
-              setOnboardingState={setOnboardingState}
-              onVoiceAction={handleVoiceAction}
-              speak={speak}
-              registerDemoTrigger={(trigger) => { simulatorTriggerRef.current = trigger; }}
-            />
+          {/* Video Demo */}
+          <div className="lg:col-span-6 flex justify-center z-10 w-full">
+            <div className={`relative w-full max-w-2xl rounded-2xl overflow-hidden border transition-all duration-300 shadow-2xl
+              ${isHighContrast 
+                ? "border-2 border-yellow-400 bg-black" 
+                : theme === "light" 
+                ? "border-slate-200 bg-white" 
+                : "border-white/10 bg-white/5"}
+            `}>
+              {/* Decorative top bar */}
+              <div className={`flex items-center justify-between px-4 py-2 border-b text-[11px] font-semibold select-none
+                ${isHighContrast ? "border-yellow-400/20 text-white" : theme === "light" ? "border-slate-200 text-slate-500" : "border-white/5 text-slate-400"}
+              `}>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full bg-red-500/80" />
+                  <div className="w-2 h-2 rounded-full bg-yellow-500/80" />
+                  <div className="w-2 h-2 rounded-full bg-green-500/80" />
+                </div>
+                <div className="font-mono text-[10px] opacity-80">demo-video.mp4</div>
+                <div className="w-10" />
+              </div>
+              
+              {/* Video aspect container */}
+              <div className="relative aspect-video w-full bg-black">
+                <video
+                  ref={videoRef}
+                  src="/demo-video.mp4"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
